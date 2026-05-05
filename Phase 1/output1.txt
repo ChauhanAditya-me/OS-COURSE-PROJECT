@@ -1,9 +1,12 @@
-TEST PROMT                              
+TEST PROMT
 
+TEST2
 
-   *  ** *******                        
+NOT SAME
 
-
-NOT SAME                                
-
+*
+*   *
+*   *   *
+*   *   *   *
+*   *   *   *   *
 

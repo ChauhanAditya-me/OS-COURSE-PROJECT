@@ -4,268 +4,263 @@ using namespace std;
 class OS
 {
 private:
-    char Memory[100][4]; // Memory
-    unsigned char R[4];  // Register
-    unsigned char IR[4]; // Instruction Registers
-    unsigned int IC;     // Instruction counter
-    bool C;              // Toggle Value
-    int SI;              // Interrupt
-    char buffer[200];    // Buffer
+    char M[100][4];
+    char IR[4];
+    char R[4];
+    int IC;
+    bool C;
+    int SI;
+    char buffer[100];
 
 public:
+    fstream fin, fout;
+
     void INIT();
     void LOAD();
+    void START();
     void EXECUTE();
     void MOS();
-    void Start();
-    int OppAdd();
+
+    int ADDR();
+
     void READ();
     void WRITE();
     void HALT();
-
-    fstream inputfile;
-    fstream outputfile;
 };
 
-void OS ::INIT()
+// ---------------- INIT ----------------
+void OS::INIT()
 {
-
     for (int i = 0; i < 100; i++)
         for (int j = 0; j < 4; j++)
-            Memory[i][j] = ' ';
+            M[i][j] = ' ';
 
-    IR[3] = ' ';
-    R[3] = ' ';
-    C = false;
     IC = 0;
+    C = false;
 }
 
-void OS ::LOAD()
+// ---------------- LOAD ----------------
+void OS::LOAD()
 {
-    cout << "Reading Data..." << endl;
-    int x = 0;
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 4; j++) // clear buffer
-            Memory[i][j] = ' ';
-    while (inputfile.getline(buffer, 42))
-    {
-        if (buffer[0] == '\0' || buffer[0] == '\n')
-            continue;
+    string line;
+    int mem_ptr = 0;
 
-        if (buffer[0] == '$' && buffer[1] == 'A' && buffer[2] == 'M' && buffer[3] == 'J')
+    while (getline(fin, line))
+    {
+        if (line.substr(0, 4) == "$AMJ")
         {
-            x = 0;
             INIT();
+            mem_ptr = 0;
         }
-        else if (buffer[0] == '$' && buffer[1] == 'D' && buffer[2] == 'T' && buffer[3] == 'A')
+        else if (line.substr(0, 4) == "$DTA")
         {
-            Start();
+            START(); // start execution AFTER program loaded
         }
-        else if (buffer[0] == '$' && buffer[1] == 'E' && buffer[2] == 'N' && buffer[3] == 'D')
+        else if (line.substr(0, 4) == "$END")
         {
             continue;
         }
         else
         {
-            int k = 0;
-
-            int limit = x + 10;
-            for (; x < limit; ++x)
+            // Load instructions only
+            if (line[0] != '$')
             {
-                for (int j = 0; j < 4; ++j)
+                int k = 0;
+                while (k < line.size())
                 {
-                    Memory[x][j] = buffer[k];
-                    k++;
-                }
-                if (buffer[k] == ' ' || buffer[k] == '\n')
-                {
-                    break;
+                    if (line[k] == 'H')
+                    {
+                        M[mem_ptr][0] = line[k++];
+                        for (int j = 1; j < 4; j++)
+                            M[mem_ptr][j] = ' ';
+                        mem_ptr++;
+                        continue;
+                    }
+
+                    for (int j = 0; j < 4; j++)
+                    {
+                        if (k < line.size())
+                            M[mem_ptr][j] = line[k++];
+                        else
+                            M[mem_ptr][j] = ' ';
+                    }
+                    mem_ptr++;
                 }
             }
         }
     }
 }
 
-int OS::OppAdd()
+// ---------------- ADDRESS ----------------
+int OS::ADDR()
 {
-    int add = IR[2] - '0';
-    add = add * 10 + (IR[3] - '0');
-    return add;
+    if (IR[2] == ' ' || IR[3] == ' ')
+        return 0;
+    return (IR[2] - '0') * 10 + (IR[3] - '0');
 }
-void OS::Start()
+
+// ---------------- START ----------------
+void OS::START()
 {
-    IC = 00;
+    IC = 0;
     EXECUTE();
 }
 
+// ---------------- EXECUTE ----------------
 void OS::EXECUTE()
 {
     while (true)
     {
-        for (int i = 0; i < 4; i++) // Load in register
-        {
-            IR[i] = Memory[IC][i];
-        }
+        for (int i = 0; i < 4; i++)
+            IR[i] = M[IC][i];
+
         IC++;
 
-        int loc = OppAdd();
+        int loc = ADDR();
 
-        if (IR[0] == 'G' && IR[1] == 'D') // GD
+        if (IR[0] == 'G' && IR[1] == 'D')
         {
             SI = 1;
             MOS();
         }
-        else if (IR[0] == 'P' && IR[1] == 'D') // PD
+        else if (IR[0] == 'P' && IR[1] == 'D')
         {
             SI = 2;
             MOS();
         }
-        else if (IR[0] == 'H') // H
+        else if (IR[0] == 'H')
         {
             SI = 3;
             MOS();
             break;
         }
-        else if (IR[0] == 'L' && IR[1] == 'R') // LR
+        else if (IR[0] == 'L' && IR[1] == 'R')
         {
-
-            for (int j = 0; j < 4; j++)
-                R[j] = Memory[loc][j];
+            for (int i = 0; i < 4; i++)
+                R[i] = M[loc][i];
         }
-        else if (IR[0] == 'S' && IR[1] == 'R') // SR
+        else if (IR[0] == 'S' && IR[1] == 'R')
         {
-
-            for (int j = 0; j < 4; j++)
-                Memory[loc][j] = R[j];
+            for (int i = 0; i < 4; i++)
+                M[loc][i] = R[i];
         }
-        else if (IR[0] == 'C' && IR[1] == 'R') // CR
+        else if (IR[0] == 'C' && IR[1] == 'R')
         {
-            int count = 0;
-
-            for (int j = 0; j <= 3; j++)
-                if (Memory[loc][j] == R[j])
-                    count++;
-
-            if (count == 4)
-                C = true;
-            else
-                C = false;
-        }
-        else if (IR[0] == 'B' && IR[1] == 'T') // BT
-        {
-            if (C == true)
+            C = true;
+            for (int i = 0; i < 4; i++)
             {
-                IC = loc;
-                C = false;
+                if (R[i] != M[loc][i])
+                {
+                    C = false;
+                    break;
+                }
             }
         }
+        else if (IR[0] == 'B' && IR[1] == 'T')
+        {
+            if (C == true)
+                IC = loc;
+        }
     }
 }
 
+// ---------------- MOS ----------------
 void OS::MOS()
 {
-    switch (SI)
-    {
-    case 1:
-        for (int i = 0; i <= 40; i++)
-            buffer[i] = ' ';
+    if (SI == 1)
         READ();
-        break;
-
-    case 2:
+    else if (SI == 2)
         WRITE();
-        break;
-
-    case 3:
-
+    else if (SI == 3)
         HALT();
-        break;
-    default:
-        break;
-    }
 }
 
+// ---------------- READ ----------------
 void OS::READ()
 {
-    for (int i = 0; i <= 40; i++)
-        buffer[i] = ' ';
-
-    inputfile.getline(buffer, 42);
-    IR[3] = '0';
-    int k = 0;
-    int loc = OppAdd();
-
-    string dataLine(buffer);
-    size_t last = dataLine.find_last_not_of(' ');
-    if (last != string::npos)
-        dataLine.erase(last + 1);
-
-    if (dataLine == "*")
+    // skip control cards and blank lines
+    do
     {
-        for (int row = 0; row < 4 && loc + row < 100; ++row)
-        {
-            for (int col = 0; col < 4; ++col)
-                Memory[loc + row][col] = (col >= 3 - row) ? '*' : ' ';
-        }
-        return;
-    }
-
-    for (int l = 0; l < 10; ++l)
-    {
-        for (int j = 0; j < 4; ++j)
-        {
-            Memory[loc][j] = buffer[k];
-            k++;
-        }
-        if (Memory[loc][0] == '$' && Memory[loc][1] == 'E' && Memory[loc][2] == 'N' && Memory[loc][3] == 'D')
+        if (!fin.getline(buffer, 100))
             return;
+    } while (buffer[0] == '$' || buffer[0] == '\0');
+
+    int loc = ADDR();
+    int k = 0;
+
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            if (buffer[k] != '\0')
+                M[loc][j] = buffer[k++];
+            else
+                M[loc][j] = ' ';
+        }
+
+        if (buffer[k] == '\0')
+            break;
 
         loc++;
     }
 }
 
+// ---------------- WRITE ----------------
 void OS::WRITE()
 {
-    int k = 0;
-    IR[3] = '0';
-    int loc = OppAdd();
-    int i = 0;
+    int loc = ADDR();
+    string line = "";
 
-    for (int l = 0; l < 10; ++l)
+    for (int i = 0; i < 10; i++)
     {
-        for (int j = 0; j < 4; ++j)
-        {
-            char ch = Memory[loc][j];
-            outputfile << (ch == '\0' ? ' ' : ch);
-            k++;
-        }
+        string word = "";
+
+        for (int j = 0; j < 4; j++)
+            word += M[loc][j];
+
+        if (word == "    ")
+            break;
+
+        line += word;
         loc++;
     }
 
-    outputfile << "\n";
+    while (!line.empty() && line.back() == ' ')
+        line.pop_back();
+
+    fout << line << endl;
 }
+
+// ---------------- HALT ----------------
 void OS::HALT()
 {
-    outputfile << "\n\n";
+    fout << endl;
 }
 
+// ---------------- MAIN ----------------
 int main()
 {
-    unsigned x;
     OS os;
-    cout << "Phase 1 Implementation \n\n\n";
-    cout << "Press any key to continue...\n";
-    cin.get();
-    os.inputfile.open("input1.txt", ios::in);
-    os.outputfile.open("output1.txt", ios::out);
 
-    if (!os.inputfile)
-        cout << "File doesn't exist" << endl;
-    else
-        cout << "File Exist" << endl;
+    os.fin.open("input1.txt");
+    os.fout.open("output1.txt", ios::out | ios::trunc);
+
+    if (!os.fin)
+    {
+        cout << "Input file not found\n";
+        return 0;
+    }
+
+    if (!os.fout)
+    {
+        cout << "Failed to create output file\n";
+        return 0;
+    }
 
     os.LOAD();
-    os.inputfile.close();
-    os.outputfile.close();
-    return 0;
+
+    os.fin.close();
+    os.fout.close();
+
+    cout << "Execution Complete. Check output1.txt\n";
 }

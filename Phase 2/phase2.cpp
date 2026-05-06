@@ -49,6 +49,7 @@ void Load();
 void START_EXECUTION();
 void EXECUTE_USER_PROGRAM();
 void simulation();
+void MOS();
 void GD();
 void PD();
 void H();
@@ -492,7 +493,7 @@ void EXECUTE_USER_PROGRAM()
         if (Instruction_register[0] == 'G' && Instruction_register[1] == 'D')
         {
             System_interrupt = 1;
-            GD();
+            MOS();
             if (message == 1)
                 break;
         }
@@ -507,13 +508,13 @@ void EXECUTE_USER_PROGRAM()
             }
             else
             {
-                PD();
+                MOS();
             }
         }
         else if (Instruction_register[0] == 'H' && Instruction_register[1] == ' ')
         {
             System_interrupt = 3;
-            H();
+            MOS();
             message = 0;
             printf("execution is completed\n");
             break;
@@ -539,7 +540,15 @@ void EXECUTE_USER_PROGRAM()
 
 void simulation()
 {
-    TTC++;
+    if ((Instruction_register[0] == 'G' && Instruction_register[1] == 'D') ||
+        (Instruction_register[0] == 'S' && Instruction_register[1] == 'R'))
+    {
+        TTC += 2;
+    }
+    else
+    {
+        TTC++;
+    }
     if (TTC > info.TTL)
     {
         TI = 2;
@@ -547,17 +556,22 @@ void simulation()
     }
 }
 
-// void MOS(){
-//     if(System_interrupt==1){
-//         GD();
-//     }
-//     else if(System_interrupt==2){
-//         PD();
-//     }
-//     else if(System_interrupt==3){
-//         H();
-//     }
-// }
+void MOS()
+{
+    if (System_interrupt == 1)
+    {
+        GD();
+    }
+    else if (System_interrupt == 2)
+    {
+        PD();
+    }
+    else if (System_interrupt == 3)
+    {
+        H();
+    }
+    System_interrupt = 0;
+}
 
 void GD()
 {

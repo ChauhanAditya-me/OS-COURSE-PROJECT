@@ -11,15 +11,16 @@ ABCD
 ABCD                                    
 NOPE                                    
 Job ID: 0003
-  Job terminated normally no error
+  Time limit exceeded error 
 
 
 Job ID: 0004
   Data out of range 
 
 
+DATA                                    
 Job ID: 0005
-  Line limit exceeded error 
+  Time limit exceeded error 
 
 
 Job ID: 0006
@@ -31,7 +32,7 @@ Job ID: 0007
 
 
 Job ID: 0008
-  Time limit exceeded and invalid opcode 
+  Time limit exceeded error 
 
 
 Job ID: 0009
